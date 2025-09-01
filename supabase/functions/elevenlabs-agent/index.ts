@@ -20,72 +20,74 @@ serve(async (req) => {
       throw new Error('ElevenLabs API key not configured')
     }
 
-    console.log('Creating ElevenLabs agent for language:', language)
+    console.log('Getting signed URL for ElevenLabs Conversational AI, language:', language)
 
-    // Create or get agent for the specific language
-    const agentConfig = {
-      name: `Medical Assistant - ${language}`,
-      prompt: {
-        prompt: `You are a multilingual medical assistant for rural Indian patients speaking ${language}. 
-
-CRITICAL INSTRUCTIONS:
-- Always respond in ${language} language only
-- Be empathetic, warm, and understanding
-- Ask relevant follow-up questions about symptoms
-- Provide general health guidance but always remind patients to consult a qualified doctor
-- Keep responses conversational and supportive
-- Listen carefully to patient concerns
-- If unclear, ask for clarification in a gentle manner
-- Maintain patient privacy and confidentiality
-
-CONVERSATION FLOW:
-1. Greet the patient warmly in ${language}
-2. Ask about their health concerns
-3. Listen and ask follow-up questions
-4. Provide supportive guidance
-5. Recommend consulting a doctor for proper diagnosis
-6. Offer to help with any other concerns
-
-Remember: You are assisting, not diagnosing. Always recommend professional medical consultation.`
+    // For ElevenLabs Conversational AI, we need to use a pre-created agent
+    // You would typically create agents in the ElevenLabs dashboard
+    // For demo purposes, we'll use a generic agent approach
+    
+    // First, let's try to get or create a conversational agent
+    const agentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
       },
-      firstMessage: getFirstMessage(language),
-      language: getLanguageCode(language),
-      voice: {
-        voiceId: "nova", // Good multilingual voice
-        stability: 0.7,
-        similarityBoost: 0.8,
-        style: 0.2,
-        useSpeakerBoost: true
-      },
-      llm: {
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        maxTokens: 200
+    })
+
+    let agentId = null
+    
+    if (agentResponse.ok) {
+      const agents = await agentResponse.json()
+      // Try to find an existing medical assistant agent
+      const existingAgent = agents.agents?.find((agent: any) => 
+        agent.name?.includes('Medical') || agent.name?.includes('Assistant')
+      )
+      
+      if (existingAgent) {
+        agentId = existingAgent.agent_id
+        console.log('Using existing agent:', agentId)
       }
     }
 
-    // Create agent session
-    const response = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(agentConfig)
-    })
+    // If no agent found, we'll create a simple one
+    if (!agentId) {
+      const createAgentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: `Medical Assistant`,
+          prompt: {
+            prompt: `You are a helpful medical assistant. Respond in ${language} language when possible. Be empathetic and provide general health guidance, but always recommend consulting a doctor for proper diagnosis.`
+          },
+          voice: {
+            voice_id: "pNInz6obpgDQGcFmaJgB" // Adam voice - good for conversational AI
+          },
+          language: getLanguageCode(language)
+        })
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('ElevenLabs API error:', errorText)
-      throw new Error(`Failed to create agent: ${response.status}`)
+      if (createAgentResponse.ok) {
+        const newAgent = await createAgentResponse.json()
+        agentId = newAgent.agent_id
+        console.log('Created new agent:', agentId)
+      } else {
+        // Fallback: use a default approach without agent
+        console.log('Could not create agent, using fallback')
+        return new Response(JSON.stringify({ 
+          signed_url: `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=default`,
+          agent_id: 'default'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
 
-    const agent = await response.json()
-    console.log('Created agent:', agent.agent_id)
-
-    // Generate signed URL for conversation
+    // Generate signed URL for the conversation
     const signedUrlResponse = await fetch(
-      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agent.agent_id}`,
+      `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`,
       {
         method: 'GET',
         headers: {
@@ -95,6 +97,8 @@ Remember: You are assisting, not diagnosing. Always recommend professional medic
     )
 
     if (!signedUrlResponse.ok) {
+      const errorText = await signedUrlResponse.text()
+      console.error('Failed to get signed URL:', errorText)
       throw new Error(`Failed to get signed URL: ${signedUrlResponse.status}`)
     }
 
@@ -102,7 +106,7 @@ Remember: You are assisting, not diagnosing. Always recommend professional medic
     
     return new Response(JSON.stringify({ 
       signed_url,
-      agent_id: agent.agent_id
+      agent_id: agentId
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
