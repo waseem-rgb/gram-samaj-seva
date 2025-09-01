@@ -207,7 +207,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     audioQueueRef.current = new AudioQueue(audioContextRef.current);
     
     // Connect to WebSocket
-    const wsUrl = `wss://vjelsuxiuyzszirfrpnl.functions.supabase.co/realtime-chat`;
+    const wsUrl = `wss://vjelsuxiuyzszirfrpnl.supabase.co/functions/v1/realtime-chat`;
     wsRef.current = new WebSocket(wsUrl);
     
     wsRef.current.onopen = () => {
