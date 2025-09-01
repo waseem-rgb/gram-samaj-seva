@@ -51,8 +51,10 @@ const Index = () => {
                 <div className="p-3 medical-gradient rounded-full">
                   <Heart className="h-8 w-8 text-white" />
                 </div>
-                <h1 className="text-4xl md:text-6xl font-bold">
-                  ग्राम स्वास्थ्य सेवा
+                <h1 className="text-4xl md:text-6xl font-bold flex items-center gap-4">
+                  <span>Med</span>
+                  <Stethoscope className="h-12 w-12 md:h-16 md:w-16" />
+                  <span>Assist</span>
                 </h1>
               </div>
               <p className="text-xl md:text-2xl mb-8 max-w-3xl mx-auto">
