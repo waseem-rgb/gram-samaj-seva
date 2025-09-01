@@ -22,81 +22,62 @@ serve(async (req) => {
 
     console.log('Getting signed URL for ElevenLabs Conversational AI, language:', language)
 
-    // First, let's get all available agents
-    const agentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
-      },
-    })
+    // Check for predefined agent ID in environment
+    const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')
+    let agentId = ELEVENLABS_AGENT_ID
 
-    let agentId = null
-    
-    if (agentResponse.ok) {
-      const agents = await agentResponse.json()
-      console.log('Available agents:', agents.agents?.length || 0)
-      
-      if (agents.agents && agents.agents.length > 0) {
-        // Try to find an existing medical assistant agent first
-        const existingAgent = agents.agents.find((agent: any) => 
-          agent.name?.toLowerCase().includes('medical') || 
-          agent.name?.toLowerCase().includes('assistant') ||
-          agent.name?.toLowerCase().includes('health')
-        )
-        
-        if (existingAgent) {
-          agentId = existingAgent.agent_id
-          console.log('Using existing medical agent:', agentId)
-        } else {
-          // Use the first available agent
-          agentId = agents.agents[0].agent_id
-          console.log('Using first available agent:', agentId)
-        }
-      }
-    } else {
-      console.error('Failed to fetch agents:', await agentResponse.text())
-    }
-
-    // If we still don't have an agent, try to create one
     if (!agentId) {
-      console.log('No agents found, attempting to create one...')
+      console.log('No predefined agent ID, fetching available agents...')
       
-      const createAgentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
-        method: 'POST',
+      // Get all available agents using correct xi-api-key header
+      const agentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
-          'Content-Type': 'application/json',
+          'xi-api-key': ELEVENLABS_API_KEY,
         },
-        body: JSON.stringify({
-          name: 'Medical Assistant',
-          prompt: {
-            prompt: `You are a helpful medical assistant. Always respond in ${language} language when possible. Be empathetic, provide general health guidance, but always recommend consulting a healthcare professional for proper diagnosis and treatment. Keep responses concise and helpful.`
-          },
-          voice: {
-            voice_id: "pNInz6obpgDQGcFmaJgB" // Default voice
-          },
-          language: getLanguageCode(language),
-          first_message: getFirstMessage(language)
-        })
       })
 
-      if (createAgentResponse.ok) {
-        const newAgent = await createAgentResponse.json()
-        agentId = newAgent.agent_id
-        console.log('Successfully created new agent:', agentId)
-      } else {
-        const createError = await createAgentResponse.text()
-        console.error('Failed to create agent:', createError)
+      if (agentResponse.ok) {
+        const agents = await agentResponse.json()
+        console.log('Available agents:', agents.agents?.length || 0)
         
-        // Return helpful error message to user
-        return new Response(JSON.stringify({ 
-          error: 'Unable to create or find ElevenLabs conversational agent. Please create an agent in your ElevenLabs dashboard first and try again.',
-          details: 'Visit https://elevenlabs.io/app/conversational-ai to create an agent.'
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        if (agents.agents && agents.agents.length > 0) {
+          // Try to find an existing medical assistant agent first
+          const existingAgent = agents.agents.find((agent: any) => 
+            agent.name?.toLowerCase().includes('medical') || 
+            agent.name?.toLowerCase().includes('assistant') ||
+            agent.name?.toLowerCase().includes('health')
+          )
+          
+          if (existingAgent) {
+            agentId = existingAgent.agent_id
+            console.log('Using existing medical agent:', agentId)
+          } else {
+            // Use the first available agent
+            agentId = agents.agents[0].agent_id
+            console.log('Using first available agent:', agentId)
+          }
+        } else {
+          console.log('No agents found in account')
+        }
+      } else {
+        const errorText = await agentResponse.text()
+        console.error('Failed to fetch agents:', errorText)
       }
+    } else {
+      console.log('Using predefined agent ID:', agentId)
+    }
+
+    // If we still don't have an agent, return error
+    if (!agentId) {
+      console.error('No conversational agents available')
+      return new Response(JSON.stringify({ 
+        error: 'No conversational agents found in your ElevenLabs account. Please create at least one agent first.',
+        details: 'Visit https://elevenlabs.io/app/conversational-ai to create an agent, then try again.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Generate signed URL for the conversation
@@ -106,7 +87,7 @@ serve(async (req) => {
       {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${ELEVENLABS_API_KEY}`,
+          'xi-api-key': ELEVENLABS_API_KEY,
         },
       }
     )
