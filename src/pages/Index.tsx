@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import LanguageSelector from '@/components/LanguageSelector';
-import ElevenLabsChat from '@/components/ElevenLabsChat';
+import RealtimeChat from '@/components/RealtimeChat';
+import MedicalChat from '@/components/MedicalChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, Stethoscope, Users, Globe } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Heart, Stethoscope, Users, Globe, Mic, Phone } from 'lucide-react';
 import heroImage from '@/assets/medical-hero.jpg';
 
 interface Language {
@@ -16,6 +18,7 @@ interface Language {
 const Index = () => {
   const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<'realtime' | 'push-to-talk'>('realtime');
 
   const handleLanguageSelect = (language: Language) => {
     setSelectedLanguage(language);
@@ -33,7 +36,11 @@ const Index = () => {
   };
 
   if (showChat && selectedLanguage) {
-    return <ElevenLabsChat language={selectedLanguage} onBack={handleBackToHome} />;
+    if (voiceMode === 'realtime') {
+      return <RealtimeChat language={selectedLanguage} onBack={handleBackToHome} />;
+    } else {
+      return <MedicalChat language={selectedLanguage} onBack={handleBackToHome} />;
+    }
   }
 
   return (
@@ -78,14 +85,40 @@ const Index = () => {
                     />
                   </div>
                 </div>
+                
+                {/* Voice Mode Selection */}
                 {selectedLanguage && (
-                  <Button 
-                    onClick={handleStartChat}
-                    size="lg"
-                    className="medical-gradient hover:scale-105 transition-all duration-300"
-                  >
-                    Start Voice Consultation
-                  </Button>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium">Voice Mode:</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        variant={voiceMode === 'realtime' ? 'default' : 'outline'}
+                        onClick={() => setVoiceMode('realtime')}
+                        className="flex items-center gap-2"
+                      >
+                        <Phone className="h-4 w-4" />
+                        Realtime Chat
+                        <Badge variant="secondary" className="text-xs">New</Badge>
+                      </Button>
+                      <Button
+                        variant={voiceMode === 'push-to-talk' ? 'default' : 'outline'}
+                        onClick={() => setVoiceMode('push-to-talk')}
+                        className="flex items-center gap-2"
+                      >
+                        <Mic className="h-4 w-4" />
+                        Push-to-Talk
+                      </Button>
+                    </div>
+                    <Button 
+                      onClick={handleStartChat}
+                      size="lg"
+                      className="medical-gradient hover:scale-105 transition-all duration-300"
+                    >
+                      Start Voice Consultation
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
