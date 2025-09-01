@@ -111,6 +111,7 @@ class AudioQueue {
   }
 
   async addToQueue(audioData: Uint8Array) {
+    console.log('Adding audio chunk to queue, size:', audioData.length);
     this.queue.push(audioData);
     if (!this.isPlaying) {
       await this.playNext();
@@ -166,11 +167,13 @@ class AudioQueue {
   private async playNext() {
     if (this.queue.length === 0) {
       this.isPlaying = false;
+      console.log('Audio queue empty, stopping playback');
       return;
     }
 
     this.isPlaying = true;
     const audioData = this.queue.shift()!;
+    console.log('Playing audio chunk, size:', audioData.length);
 
     try {
       const wavData = this.createWavFromPCM(audioData);
@@ -180,7 +183,10 @@ class AudioQueue {
       source.buffer = audioBuffer;
       source.connect(this.audioContext.destination);
       
-      source.onended = () => this.playNext();
+      source.onended = () => {
+        console.log('Audio chunk finished playing');
+        this.playNext();
+      };
       source.start(0);
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -194,12 +200,14 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [clinicalNotes, setClinicalNotes] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   
   const wsRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<AudioRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioQueue | null>(null);
   const currentTranscriptRef = useRef('');
+  const sessionInitializedRef = useRef(false);
 
   // Translation helper
   const getTranslation = (key: string) => {
@@ -239,106 +247,44 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
         ml: 'സംസാരിക്കാൻ തുടങ്ങാൻ ക്ലിക്ക് ചെയ്യുക',
         pa: 'ਬੋਲਣਾ ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਕਲਿੱਕ ਕਰੋ',
         en: 'Click to start speaking'
-      },
-      listening: {
-        hi: 'सुन रहा है...',
-        bn: 'শুনছি...',
-        te: 'వింటున్నా...',
-        ta: 'கேட்டுக்கொண்டிருக்கிறது...',
-        mr: 'ऐकत आहे...',
-        gu: 'સાંભળી રહ્યું છે...',
-        kn: 'ಕೇಳುತ್ತಿದೆ...',
-        ml: 'കേൾക്കുന്നു...',
-        pa: 'ਸੁਣ ਰਿਹਾ ਹੈ...',
-        en: 'Listening...'
-      },
-      clickMicrophone: {
-        hi: 'माइक्रोफोन पर क्लिक करें',
-        bn: 'মাইক্রোফোনে ক্লিক করুন',
-        te: 'మైక్రోఫోన్‌పై క్లిక్ చేయండి',
-        ta: 'மைக்ரோஃபோனில் கிளிக் செய்யவும்',
-        mr: 'मायक्रोफोनवर क्लिक करा',
-        gu: 'માઇક્રોફોન પર ક્લિક કરો',
-        kn: 'ಮೈಕ್ರೋಫೋನ್ ಮೇಲೆ ಕ್ಲಿಕ್ ಮಾಡಿ',
-        ml: 'മൈക്രോഫോണിൽ ക്ലിക്ക് ചെയ്യുക',
-        pa: "ਮਾਈਕ੍ਰੋਫੋਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ",
-        en: 'Click microphone'
-      },
-      patientSummary: {
-        hi: 'रोगी सारांश',
-        bn: 'রোগীর সারসংক্ষেপ',
-        te: 'రోగి సారాంశం',
-        ta: 'நோயாளி சுருக்கம்',
-        mr: 'रुग्ण सारांश',
-        gu: 'દર્દીનો સારાંश',
-        kn: 'ರೋಗಿಯ ಸಾರಾಂಶ',
-        ml: 'രോഗിയുടെ സംഗ്രഹം',
-        pa: 'ਮਰੀਜ਼ ਦਾ ਸਾਰ',
-        en: 'Patient Summary'
-      },
-      reportedSymptoms: {
-        hi: 'रिपोर्ट किए गए लक्षण',
-        bn: 'রিপোর্ট করা লক্ষণ',
-        te: 'నివేదించిన లక్షణాలు',
-        ta: 'அறிக்கையிடப்பட்ட அறிகுறிகள்',
-        mr: 'नोंदवलेली लक्षणे',
-        gu: 'રિપોર્ટ કરેલા લક્ષણો',
-        kn: 'ವರದಿ ಮಾಡಿದ ಲಕ್ಷಣಗಳು',
-        ml: 'റിപ്പോർട്ട് ചെയ്ത ലക്ഷണങ്ങൾ',
-        pa: 'ਰਿਪੋਰਟ ਕੀਤੇ ਲੱਛਣ',
-        en: 'Reported Symptoms'
-      },
-      additionalInfo: {
-        hi: 'अतिरिक्त जानकारी',
-        bn: 'অতিরিক্ত তথ্য',
-        te: 'అదనపు సమాచారం',
-        ta: 'கூடுதல் தகவல்',
-        mr: 'अतिरिक्त माहिती',
-        gu: 'વધારાની માહિતી',
-        kn: 'ಹೆಚ್ಚುವರಿ ಮಾಹಿತಿ',
-        ml: 'അധിക വിവരങ്ങൾ',
-        pa: 'ਵਾਧੂ ਜਾਣਕਾਰੀ',
-        en: 'Additional Info'
-      },
-      exportClinicalNote: {
-        hi: 'क्लिनिकल नोट डाउनलोड करें',
-        bn: 'ক্লিনিক্যাল নোট ডাউনলোড করুন',
-        te: 'క్లినికల్ నోట్ డౌన్‌లోడ్ చేయండి',
-        ta: 'மருத்துவ குறிப்பை பதிவிறக்கவும்',
-        mr: 'क्लिनिकल नोट डाउनलोड करा',
-        gu: 'ક્લિનિકલ નોંધ ડાઉનલોડ કરો',
-        kn: 'ಕ್ಲಿನಿಕಲ್ ನೋಟ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
-        ml: 'ക്ലിനിക്കൽ നോട്ട് ഡൗൺലോഡ് ചെയ്യുക',
-        pa: 'ਕਲੀਨਿਕਲ ਨੋਟ ਡਾਊਨਲੋਡ ਕਰੋ',
-        en: 'Export Clinical Note'
-      },
-      clearHistory: {
-        hi: 'इतिहास साफ़ करें',
-        bn: 'ইতিহাস মুছুন',
-        te: 'చరిత్రను క్లియర్ చేయండి',
-        ta: 'வரலாற்றை அழிக்கவும்',
-        mr: 'इतिहास साफ करा',
-        gu: 'ઇતિહાસ સાફ કરો',
-        kn: 'ಇತಿಹಾಸವನ್ನು ತೆರವುಗೊಳಿಸಿ',
-        ml: 'ചരിത്രം മായ്ക്കുക',
-        pa: 'ਇਤਿਹਾਸ ਸਾਫ਼ ਕਰੋ',
-        en: 'Clear History'
-      },
-      patientReportsIn: {
-        hi: 'रोगी में लक्षण बताता है',
-        bn: 'রোগী ভাষায় লক্ষণ বর্ণনা করেছেন',
-        te: 'రోగి లో లక్షణాలను వివరించారు',
-        ta: `நோயாளி மொழியில் அறிகুறிகளை விவரித்தார்`,
-        mr: 'रुग्ण मध्ये लक्षणे सांगतो',
-        gu: 'દર્દી માં લક્ષણો વર્ણવે છે',
-        kn: 'ರೋಗಿಯು ನಲ್ಲಿ ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸುತ್ತಾರೆ',
-        ml: 'രോഗി ഭാഷയിൽ ലക്ഷണങ്ങൾ വിവരിക്കുന്നു',
-        pa: 'ਮਰੀਜ਼ ਵਿੱਚ ਲੱਛਣ ਦੱਸਦਾ ਹੈ',
-        en: 'Patient reports symptoms'
       }
     };
     
     return translations[key]?.[language.code] || translations[key]?.['en'] || '';
+  };
+
+  const initializeSession = () => {
+    if (sessionInitializedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    console.log('Initializing OpenAI session...');
+    sessionInitializedRef.current = true;
+
+    const sessionConfig = {
+      type: 'session.update',
+      session: {
+        modalities: ['text', 'audio'],
+        instructions: `You are a helpful multilingual medical assistant. The patient speaks in ${language.name} (${language.native}). Please respond in ${language.name} when possible, but you can use English if needed for medical clarity. Be empathetic, ask relevant follow-up questions, and provide helpful medical guidance while always recommending professional medical consultation for serious concerns.`,
+        voice: 'alloy',
+        input_audio_format: 'pcm16',
+        output_audio_format: 'pcm16',
+        input_audio_transcription: {
+          model: 'whisper-1'
+        },
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 1000
+        },
+        temperature: 0.8,
+        max_response_output_tokens: 4096
+      }
+    };
+
+    wsRef.current.send(JSON.stringify(sessionConfig));
+    console.log('Session configuration sent');
   };
 
   useEffect(() => {
@@ -346,35 +292,49 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     audioContextRef.current = new AudioContext({ sampleRate: 24000 });
     audioQueueRef.current = new AudioQueue(audioContextRef.current);
     
-    // Connect to WebSocket - Use dynamic URL from window location
-    const wsUrl = `wss://${window.location.hostname.replace('lovable.dev', 'supabase.co')}/functions/v1/realtime-chat`;
+    // Connect to WebSocket - Use the correct Supabase project URL
+    const wsUrl = 'wss://vjelsuxiuyzszirfrpnl.supabase.co/functions/v1/realtime-chat';
     console.log('Attempting to connect to WebSocket:', wsUrl);
     wsRef.current = new WebSocket(wsUrl);
     
     wsRef.current.onopen = () => {
-      console.log('Connected to realtime chat');
+      console.log('WebSocket connected to realtime chat');
+      setConnectionStatus('connected');
       toast({
         title: "Connected",
         description: "Voice conversation is ready",
       });
+      
+      // Initialize session after connection
+      setTimeout(() => initializeSession(), 100);
     };
     
     wsRef.current.onmessage = async (event) => {
       const data = JSON.parse(event.data);
-      console.log('Received message:', data.type);
+      console.log('Received message:', data.type, data);
       
-      if (data.type === 'response.audio.delta') {
+      if (data.type === 'session.created') {
+        console.log('Session created, initializing...');
+        initializeSession();
+      } else if (data.type === 'session.updated') {
+        console.log('Session updated successfully');
+      } else if (data.type === 'response.audio.delta') {
         // Play audio chunk
-        const binaryString = atob(data.delta);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+        console.log('Received audio delta, size:', data.delta?.length);
+        if (data.delta) {
+          const binaryString = atob(data.delta);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          await audioQueueRef.current?.addToQueue(bytes);
         }
-        await audioQueueRef.current?.addToQueue(bytes);
       } else if (data.type === 'response.audio_transcript.delta') {
         currentTranscriptRef.current += data.delta;
+        console.log('Audio transcript delta:', data.delta);
       } else if (data.type === 'response.audio_transcript.done') {
         if (currentTranscriptRef.current.trim()) {
+          console.log('Full AI transcript:', currentTranscriptRef.current);
           const newMessage: Message = {
             id: Date.now().toString(),
             type: 'assistant',
@@ -388,6 +348,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
         }
         currentTranscriptRef.current = '';
       } else if (data.type === 'conversation.item.input_audio_transcription.completed') {
+        console.log('User transcript:', data.transcript);
         const userMessage: Message = {
           id: Date.now().toString(),
           type: 'user',
@@ -407,12 +368,19 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
         if (foundSymptoms.length > 0) {
           setSymptoms(prev => [...new Set([...prev, ...foundSymptoms])]);
         }
+      } else if (data.type === 'error') {
+        console.error('OpenAI API Error:', data.error);
+        toast({
+          title: "AI Error",
+          description: data.error?.message || 'An error occurred with the AI service',
+          variant: "destructive"
+        });
       }
     };
     
     wsRef.current.onerror = (error) => {
       console.error('WebSocket error:', error);
-      console.error('WebSocket URL:', wsUrl);
+      setConnectionStatus('error');
       toast({
         title: "Connection Error",
         description: "Could not connect to voice service. Check console for details.",
@@ -422,6 +390,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     
     wsRef.current.onclose = (event) => {
       console.log('WebSocket connection closed:', event.code, event.reason);
+      setConnectionStatus('error');
       if (event.code !== 1000) { // Not a normal closure
         console.error('WebSocket closed unexpectedly:', event);
         toast({
@@ -443,11 +412,21 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
         audioContextRef.current.close();
       }
     };
-  }, []);
+  }, [language]);
 
   const toggleRecording = async () => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      toast({
+        title: "Connection Error",
+        description: "Please wait for connection to establish",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!isRecording) {
       try {
+        console.log('Starting recording...');
         recorderRef.current = new AudioRecorder((audioData) => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             const base64Audio = encodeAudioForAPI(audioData);
@@ -469,11 +448,12 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
         console.error('Error starting recording:', error);
         toast({
           title: "Microphone Error",
-          description: "Could not access microphone",
+          description: "Could not access microphone. Please allow microphone permissions.",
           variant: "destructive"
         });
       }
     } else {
+      console.log('Stopping recording...');
       if (recorderRef.current) {
         recorderRef.current.stop();
         recorderRef.current = null;
@@ -510,6 +490,24 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     });
   };
 
+  const getConnectionStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'bg-green-100 text-green-800';
+      case 'connecting': return 'bg-yellow-100 text-yellow-800';
+      case 'error': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getConnectionStatusText = () => {
+    switch (connectionStatus) {
+      case 'connected': return '🟢 Connected';
+      case 'connecting': return '🟡 Connecting...';
+      case 'error': return '🔴 Connection Error';
+      default: return '⚪ Unknown';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary-light/10 to-secondary-light/20">
       <div className="container mx-auto px-4 py-4">
@@ -532,21 +530,19 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
           </div>
           <div className="ml-auto flex items-center gap-2">
             {messages.length > 0 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearHistory}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Clear History
-                </Button>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                  🟢 Active Session
-                </span>
-              </>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearHistory}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear History
+              </Button>
             )}
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getConnectionStatusColor()}`}>
+              {getConnectionStatusText()}
+            </span>
           </div>
         </div>
       </div>
@@ -568,11 +564,14 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
               <div className="flex justify-center">
                 <Button
                   onClick={toggleRecording}
+                  disabled={connectionStatus !== 'connected'}
                   size="lg"
                   className={`rounded-full p-6 ${
                     isRecording 
                       ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'medical-gradient hover:scale-105'
+                      : connectionStatus === 'connected'
+                        ? 'medical-gradient hover:scale-105'
+                        : 'bg-gray-400 cursor-not-allowed'
                   } transition-all duration-300`}
                 >
                   {isRecording ? (
@@ -584,18 +583,79 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
               </div>
 
               <p className="text-center text-sm text-muted-foreground">
-                {isRecording 
-                  ? 'Listening... AI will respond when you pause' 
-                  : 'Click microphone to start conversation'}
+                {connectionStatus !== 'connected' 
+                  ? 'Connecting to voice service...'
+                  : isRecording 
+                    ? 'Listening... AI will respond when you pause' 
+                    : 'Click microphone to start conversation'}
               </p>
               <p className="text-center text-xs text-muted-foreground">
                 {isRecording 
                   ? 'सुन रहा है... • শুনছি... • వింటున్నా...' 
                   : 'माइक्रोफोन पर क्लिक करें • মাইক্রোফোনে ক্লিক করুন • మైక్రోఫోన్‌పై క్లిక్ చేయండి'}
               </p>
+            </CardContent>
+          </Card>
 
-              {/* Messages */}
-              {messages.length > 0 && (
+          {/* Patient Summary */}
+          <Card className="card-shadow border-0">
+            <CardHeader>
+              <CardTitle>Patient Summary</CardTitle>
+              <p className="text-xs text-muted-foreground">रोगी सारांश • রোগীর সারসংক্ষেপ • రోगి సారాంశం</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {symptoms.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-2">Reported Symptoms</h3>
+                  <p className="text-xs text-muted-foreground mb-2">रिपोर्ट किए गए लक्षण</p>
+                  <div className="flex flex-wrap gap-2">
+                    {symptoms.map((symptom, index) => (
+                      <Badge key={index} variant="secondary" className="bg-red-100 text-red-800">
+                        {symptom}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-medium mb-2">Additional Info</h3>
+                <p className="text-xs text-muted-foreground mb-2">अतिरिक्त जानकारी</p>
+                <p className="text-sm text-muted-foreground">
+                  Patient reports symptoms in {language.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Patient reports symptoms in {language.native}
+                </p>
+              </div>
+
+              {clinicalNotes && (
+                <div className="pt-4">
+                  <Button 
+                    onClick={downloadClinicalNote}
+                    className="w-full medical-gradient"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Clinical Note
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground mt-1">
+                    क्लिनिकल नोट डाउनलोड करें
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Conversation History - Moved Below */}
+        {messages.length > 0 && (
+          <div className="mt-6">
+            <Card className="card-shadow border-0">
+              <CardHeader>
+                <CardTitle>Conversation History</CardTitle>
+                <p className="text-sm text-muted-foreground">Your conversation with the medical assistant</p>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {messages.map((message) => (
                     <div
@@ -618,59 +678,10 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Patient Summary */}
-          <Card className="card-shadow border-0">
-            <CardHeader>
-              <CardTitle>Patient Summary</CardTitle>
-              <p className="text-xs text-muted-foreground">{getTranslation('patientSummary')}</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {symptoms.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Reported Symptoms</h3>
-                  <p className="text-xs text-muted-foreground mb-2">{getTranslation('reportedSymptoms')}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {symptoms.map((symptom, index) => (
-                      <Badge key={index} variant="secondary" className="bg-red-100 text-red-800">
-                        {symptom}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <h3 className="font-medium mb-2">Additional Info</h3>
-                <p className="text-xs text-muted-foreground mb-2">{getTranslation('additionalInfo')}</p>
-                <p className="text-sm text-muted-foreground">
-                  Patient reports symptoms in {language.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {getTranslation('patientReportsIn')} {language.native}
-                </p>
-              </div>
-
-              {clinicalNotes && (
-                <div className="pt-4">
-                  <Button 
-                    onClick={downloadClinicalNote}
-                    className="w-full medical-gradient"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Clinical Note
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground mt-1">
-                    {getTranslation('exportClinicalNote')}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
