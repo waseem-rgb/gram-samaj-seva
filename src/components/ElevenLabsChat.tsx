@@ -209,6 +209,15 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
     try {
       setIsConnecting(true);
       
+      // Request microphone permission first
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('Microphone permission granted');
+      } catch (permError) {
+        console.error('Microphone permission denied:', permError);
+        throw new Error('Microphone access is required for voice conversation');
+      }
+      
       // Get signed URL from our edge function
       const { data, error } = await supabase.functions.invoke('elevenlabs-agent', {
         body: { language: language.code }
@@ -217,20 +226,18 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       if (error) throw error;
       
       setSignedUrl(data.signed_url);
-      
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Starting conversation with URL:', data.signed_url);
       
       // Start conversation with signed URL
-      await conversation.startSession({
+      const conversationId = await conversation.startSession({
         signedUrl: data.signed_url
       });
       
     } catch (error) {
       console.error('Error starting conversation:', error);
       toast({
-        title: "Connection Error",
-        description: "Could not start voice conversation. Please check microphone permissions.",
+        title: "Connection Error", 
+        description: error instanceof Error ? error.message : "Could not start voice conversation. Please check microphone permissions.",
         variant: "destructive"
       });
       setIsConnecting(false);
