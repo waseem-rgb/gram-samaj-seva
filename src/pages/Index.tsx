@@ -65,15 +65,19 @@ const Index = () => {
               </p>
               
               {/* Language Selection */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <Globe className="h-5 w-5" />
-                  <span className="font-medium">Choose Your Language:</span>
+              <div className="flex flex-col items-center gap-6">
+                <div className="flex items-center gap-4 flex-wrap justify-center">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5" />
+                    <span className="font-medium">Choose Your Language:</span>
+                  </div>
+                  <div className="min-w-[200px]">
+                    <LanguageSelector 
+                      onLanguageSelect={handleLanguageSelect} 
+                      selectedLanguage={selectedLanguage}
+                    />
+                  </div>
                 </div>
-                <LanguageSelector 
-                  onLanguageSelect={handleLanguageSelect} 
-                  selectedLanguage={selectedLanguage}
-                />
                 {selectedLanguage && (
                   <Button 
                     onClick={handleStartChat}

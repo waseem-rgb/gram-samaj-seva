@@ -49,7 +49,7 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
     onMessage: (message) => {
       console.log('Received message:', message);
       
-      if (message.type === 'user_transcript') {
+      if (message.source === 'user') {
         const userMessage: Message = {
           id: Date.now().toString(),
           type: 'user',
@@ -67,7 +67,7 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
         if (foundSymptoms.length > 0) {
           setSymptoms(prev => [...new Set([...prev, ...foundSymptoms])]);
         }
-      } else if (message.type === 'agent_response') {
+      } else if (message.source === 'ai') {
         const assistantMessage: Message = {
           id: Date.now().toString(),
           type: 'assistant',
@@ -221,8 +221,10 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Start conversation
-      await conversation.startSession({ url: data.signed_url });
+      // Start conversation with signed URL
+      await conversation.startSession({
+        signedUrl: data.signed_url
+      });
       
     } catch (error) {
       console.error('Error starting conversation:', error);

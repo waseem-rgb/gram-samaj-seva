@@ -36,10 +36,10 @@ export default function LanguageSelector({ onLanguageSelect, selectedLanguage }:
   };
 
   return (
-    <div className="w-full max-w-xs">
+    <div className="w-full">
       <Select onValueChange={handleLanguageChange} value={selectedLanguage?.code}>
-        <SelectTrigger className="w-full bg-white border-2 hover:border-primary/20 focus:border-primary z-50">
-          <SelectValue placeholder="Select Language / भाषा चुनें" />
+        <SelectTrigger className="w-full bg-white/95 border-2 hover:border-primary/20 focus:border-primary z-50 h-10">
+          <SelectValue placeholder="Select Language" />
         </SelectTrigger>
         <SelectContent className="bg-card border-2 shadow-lg z-[100] max-h-60">
           {languages.map((language) => (
