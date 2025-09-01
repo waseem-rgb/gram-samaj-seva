@@ -1,14 +1,34 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import LanguageSelector from '@/components/LanguageSelector';
+import MedicalChat from '@/components/MedicalChat';
+import heroImage from '@/assets/medical-hero.jpg';
+
+interface Language {
+  code: string;
+  name: string;
+  native: string;
+  flag: string;
+}
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
+  const [showChat, setShowChat] = useState(false);
+
+  const handleLanguageSelect = (language: Language) => {
+    setSelectedLanguage(language);
+    setTimeout(() => setShowChat(true), 500);
+  };
+
+  const handleBackToLanguages = () => {
+    setShowChat(false);
+    setSelectedLanguage(null);
+  };
+
+  if (showChat && selectedLanguage) {
+    return <MedicalChat language={selectedLanguage} onBack={handleBackToLanguages} />;
+  }
+
+  return <LanguageSelector onLanguageSelect={handleLanguageSelect} />;
 };
 
 export default Index;

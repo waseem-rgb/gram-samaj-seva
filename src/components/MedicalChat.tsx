@@ -1,0 +1,383 @@
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Mic, 
+  MicOff, 
+  Send, 
+  FileText, 
+  Download,
+  Bot,
+  User,
+  ArrowLeft,
+  Heart,
+  Activity
+} from 'lucide-react';
+
+interface Language {
+  code: string;
+  name: string;
+  native: string;
+  flag: string;
+}
+
+interface Message {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+interface ClinicalNote {
+  patientConcerns: string[];
+  symptoms: string[];
+  duration: string;
+  severity: string;
+  additionalInfo: string;
+  suggestedQuestions: string[];
+}
+
+interface MedicalChatProps {
+  language: Language;
+  onBack: () => void;
+}
+
+export default function MedicalChat({ language, onBack }: MedicalChatProps) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      type: 'assistant',
+      content: language.code === 'hi' 
+        ? 'नमस्ते! मैं आपका चिकित्सा सहायक हूं। कृपया अपनी स्वास्थ्य संबंधी चिंताओं के बारे में बताएं।'
+        : language.code === 'bn'
+        ? 'নমস্কার! আমি আপনার চিকিৎসা সহায়ক। অনুগ্রহ করে আপনার স্বাস্থ্যগত উদ্বেগের কথা বলুন।'
+        : 'Hello! I am your medical assistant. Please tell me about your health concerns.',
+      timestamp: new Date()
+    }
+  ]);
+  const [inputValue, setInputValue] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [clinicalNote, setClinicalNote] = useState<ClinicalNote>({
+    patientConcerns: [],
+    symptoms: [],
+    duration: '',
+    severity: '',
+    additionalInfo: '',
+    suggestedQuestions: []
+  });
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+
+    // Simulate AI response
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: generateAIResponse(inputValue, language.code),
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+      updateClinicalNote(inputValue);
+    }, 1500);
+  };
+
+  const generateAIResponse = (userInput: string, langCode: string): string => {
+    // Simulate intelligent medical responses based on language
+    const responses = {
+      hi: [
+        'मैं समझ गया। क्या आप बता सकते हैं कि यह समस्या कब से है?',
+        'इस लक्षण के साथ क्या कोई दर्द या बेचैनी भी है?',
+        'क्या आपने इसके लिए कोई दवा ली है?'
+      ],
+      bn: [
+        'আমি বুঝেছি। আপনি কি বলতে পারেন এই সমস্যা কতদিন ধরে?',
+        'এই লক্ষণের সাথে কি কোনো ব্যথা বা অস্বস্তি আছে?',
+        'আপনি কি এর জন্য কোনো ওষুধ খেয়েছেন?'
+      ],
+      en: [
+        'I understand. Can you tell me how long you have been experiencing this?',
+        'Is there any pain or discomfort associated with this symptom?',
+        'Have you taken any medication for this?'
+      ]
+    };
+
+    const langResponses = responses[langCode as keyof typeof responses] || responses.en;
+    return langResponses[Math.floor(Math.random() * langResponses.length)];
+  };
+
+  const updateClinicalNote = (userInput: string) => {
+    // Simulate clinical note extraction
+    setClinicalNote(prev => ({
+      ...prev,
+      patientConcerns: [...prev.patientConcerns, userInput].slice(-5),
+      symptoms: prev.symptoms.concat(['Fever', 'Headache']).slice(-10),
+      duration: '2-3 days',
+      severity: 'Moderate',
+      additionalInfo: 'Patient reports symptoms in local language'
+    }));
+  };
+
+  const toggleRecording = () => {
+    setIsRecording(!isRecording);
+    // Here you would integrate actual speech-to-text functionality
+  };
+
+  const exportClinicalNote = () => {
+    const noteContent = `
+CLINICAL NOTE - MULTILINGUAL MEDICAL ASSISTANT
+Generated: ${new Date().toLocaleString()}
+Language: ${language.name} (${language.native})
+
+PATIENT CONCERNS:
+${clinicalNote.patientConcerns.join('\n')}
+
+REPORTED SYMPTOMS:
+${clinicalNote.symptoms.join(', ')}
+
+DURATION: ${clinicalNote.duration}
+SEVERITY: ${clinicalNote.severity}
+
+ADDITIONAL INFORMATION:
+${clinicalNote.additionalInfo}
+
+CONVERSATION HISTORY:
+${messages.map(m => `${m.type.toUpperCase()}: ${m.content}`).join('\n')}
+
+---
+This clinical note was generated by AI and requires doctor review for diagnosis and treatment.
+    `;
+
+    const blob = new Blob([noteContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clinical-note-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary-light/10 to-secondary-light/20">
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onBack}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-3">
+                <div className="p-2 medical-gradient rounded-full">
+                  <Heart className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg">Medical Assistant</h1>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{language.flag}</span>
+                    <span>{language.native}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-secondary-light">
+              <Activity className="h-3 w-3 mr-1" />
+              Active Session
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+          {/* Chat Interface */}
+          <div className="lg:col-span-2">
+            <Card className="h-[600px] card-shadow border-0">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Bot className="h-5 w-5" />
+                  Conversation
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col h-full p-0">
+                <ScrollArea className="flex-1 px-6">
+                  <div className="space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex items-start gap-3 ${
+                          message.type === 'user' ? 'flex-row-reverse' : ''
+                        }`}
+                      >
+                        <div className={`p-2 rounded-full ${
+                          message.type === 'user' 
+                            ? 'warm-gradient' 
+                            : 'medical-gradient'
+                        }`}>
+                          {message.type === 'user' ? (
+                            <User className="h-4 w-4 text-white" />
+                          ) : (
+                            <Bot className="h-4 w-4 text-white" />
+                          )}
+                        </div>
+                        <div className={`max-w-[80%] ${
+                          message.type === 'user' ? 'text-right' : ''
+                        }`}>
+                          <div className={`p-4 rounded-lg ${
+                            message.type === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}>
+                            <p className="text-sm leading-relaxed">{message.content}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {message.timestamp.toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+                
+                {/* Input Area */}
+                <div className="border-t p-4">
+                  <div className="flex gap-2">
+                    <Button
+                      variant={isRecording ? "destructive" : "outline"}
+                      size="icon"
+                      onClick={toggleRecording}
+                      className="transition-bounce"
+                    >
+                      {isRecording ? (
+                        <MicOff className="h-4 w-4" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Input
+                      placeholder={
+                        language.code === 'hi' 
+                          ? 'अपना संदेश लिखें...'
+                          : language.code === 'bn'
+                          ? 'আপনার বার্তা লিখুন...'
+                          : 'Type your message...'
+                      }
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={handleSendMessage}
+                      className="medical-gradient"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Clinical Notes Panel */}
+          <div>
+            <Card className="h-[600px] card-shadow border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-secondary">
+                  <FileText className="h-5 w-5" />
+                  Clinical Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">Patient Concerns</h4>
+                  <div className="space-y-1">
+                    {clinicalNote.patientConcerns.map((concern, index) => (
+                      <p key={index} className="text-sm bg-muted p-2 rounded">
+                        {concern}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">Symptoms</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {clinicalNote.symptoms.map((symptom, index) => (
+                      <Badge key={index} variant="secondary">
+                        {symptom}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-semibold text-sm">Duration: </span>
+                    <span className="text-sm">{clinicalNote.duration}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-sm">Severity: </span>
+                    <Badge variant="outline">{clinicalNote.severity}</Badge>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="font-semibold text-sm mb-2">Additional Info</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {clinicalNote.additionalInfo}
+                  </p>
+                </div>
+
+                <div className="pt-4">
+                  <Button 
+                    onClick={exportClinicalNote}
+                    variant="healing"
+                    className="w-full"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Clinical Note
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
