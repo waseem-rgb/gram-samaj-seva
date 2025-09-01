@@ -61,7 +61,7 @@ const Index = () => {
                 Rural Health Assistant • ग्रामीण स्वास्थ्य सहायक
               </p>
               <p className="text-lg mb-8 max-w-2xl mx-auto opacity-90">
-                Bridging healthcare gaps in rural India with AI-powered multilingual medical assistance
+                Bridging healthcare gaps in rural India with multilingual medical assistance
               </p>
               
               {/* Language Selection */}
@@ -136,7 +136,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                AI generates clinical notes for qualified doctors to review and provide treatment
+                Generates clinical notes for qualified doctors to review and provide treatment
               </p>
             </CardContent>
           </Card>
