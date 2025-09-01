@@ -348,6 +348,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     
     // Connect to WebSocket
     const wsUrl = `wss://vjelsuxiuyzszirfrpnl.supabase.co/functions/v1/realtime-chat`;
+    console.log('Attempting to connect to WebSocket:', wsUrl);
     wsRef.current = new WebSocket(wsUrl);
     
     wsRef.current.onopen = () => {
@@ -411,15 +412,24 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     
     wsRef.current.onerror = (error) => {
       console.error('WebSocket error:', error);
+      console.error('WebSocket URL:', wsUrl);
       toast({
         title: "Connection Error",
-        description: "Could not connect to voice service",
+        description: "Could not connect to voice service. Check console for details.",
         variant: "destructive"
       });
     };
     
-    wsRef.current.onclose = () => {
-      console.log('WebSocket connection closed');
+    wsRef.current.onclose = (event) => {
+      console.log('WebSocket connection closed:', event.code, event.reason);
+      if (event.code !== 1000) { // Not a normal closure
+        console.error('WebSocket closed unexpectedly:', event);
+        toast({
+          title: "Connection Lost",
+          description: `Voice service disconnected (Code: ${event.code}). Please refresh.`,
+          variant: "destructive"
+        });
+      }
     };
     
     return () => {
