@@ -1,21 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Mic, 
   MicOff, 
-  Send, 
   FileText, 
   Download,
   Bot,
   User,
   ArrowLeft,
   Heart,
-  Activity
+  Activity,
+  Volume2
 } from 'lucide-react';
 
 interface Language {
@@ -47,20 +48,22 @@ interface MedicalChatProps {
 }
 
 export default function MedicalChat({ language, onBack }: MedicalChatProps) {
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'assistant',
       content: language.code === 'hi' 
-        ? 'नमस्ते! मैं आपका चिकित्सा सहायक हूं। कृपया अपनी स्वास्थ्य संबंधी चिंताओं के बारे में बताएं।'
+        ? 'नमस्ते! मैं आपका चिकित्सा सहायक हूं। कृपया अपनी स्वास्थ्य संबंधी चिंताओं के बारे में बोलें।'
         : language.code === 'bn'
         ? 'নমস্কার! আমি আপনার চিকিৎসা সহায়ক। অনুগ্রহ করে আপনার স্বাস্থ্যগত উদ্বেগের কথা বলুন।'
-        : 'Hello! I am your medical assistant. Please tell me about your health concerns.',
+        : 'Hello! I am your medical assistant. Please speak about your health concerns.',
       timestamp: new Date()
     }
   ]);
-  const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [clinicalNote, setClinicalNote] = useState<ClinicalNote>({
     patientConcerns: [],
     symptoms: [],
@@ -71,6 +74,9 @@ export default function MedicalChat({ language, onBack }: MedicalChatProps) {
   });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,55 +86,140 @@ export default function MedicalChat({ language, onBack }: MedicalChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputValue,
-      timestamp: new Date()
+  // Play welcome message on component mount
+  useEffect(() => {
+    const playWelcomeMessage = async () => {
+      try {
+        const welcomeText = messages[0].content;
+        await playTextToSpeech(welcomeText);
+      } catch (error) {
+        console.error('Error playing welcome message:', error);
+      }
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    playWelcomeMessage();
+  }, []);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: generateAIResponse(inputValue, language.code),
-        timestamp: new Date()
+  const playTextToSpeech = async (text: string) => {
+    try {
+      setIsPlayingAudio(true);
+      
+      const { data, error } = await supabase.functions.invoke('text-to-speech', {
+        body: { text, language: language.code }
+      });
+
+      if (error) throw error;
+
+      // Create audio element and play
+      const audioBlob = new Blob([Uint8Array.from(atob(data.audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => {
+        setIsPlayingAudio(false);
+        URL.revokeObjectURL(audioUrl);
       };
       
-      setMessages(prev => [...prev, assistantMessage]);
-      updateClinicalNote(inputValue);
-    }, 1500);
+      await audioRef.current.play();
+    } catch (error) {
+      console.error('Error playing text-to-speech:', error);
+      setIsPlayingAudio(false);
+      toast({
+        title: "Audio Error",
+        description: "Could not play audio response",
+        variant: "destructive"
+      });
+    }
   };
 
-  const generateAIResponse = (userInput: string, langCode: string): string => {
-    // Simulate intelligent medical responses based on language
-    const responses = {
-      hi: [
-        'मैं समझ गया। क्या आप बता सकते हैं कि यह समस्या कब से है?',
-        'इस लक्षण के साथ क्या कोई दर्द या बेचैनी भी है?',
-        'क्या आपने इसके लिए कोई दवा ली है?'
-      ],
-      bn: [
-        'আমি বুঝেছি। আপনি কি বলতে পারেন এই সমস্যা কতদিন ধরে?',
-        'এই লক্ষণের সাথে কি কোনো ব্যথা বা অস্বস্তি আছে?',
-        'আপনি কি এর জন্য কোনো ওষুধ খেয়েছেন?'
-      ],
-      en: [
-        'I understand. Can you tell me how long you have been experiencing this?',
-        'Is there any pain or discomfort associated with this symptom?',
-        'Have you taken any medication for this?'
-      ]
-    };
+  const handleVoiceMessage = async (audioBlob: Blob) => {
+    try {
+      setIsProcessing(true);
 
-    const langResponses = responses[langCode as keyof typeof responses] || responses.en;
-    return langResponses[Math.floor(Math.random() * langResponses.length)];
+      // Convert audio to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+      // Speech to text
+      const { data: sttData, error: sttError } = await supabase.functions.invoke('speech-to-text', {
+        body: { audio: base64Audio, language: language.code }
+      });
+
+      if (sttError) throw sttError;
+
+      const userText = sttData.text;
+      if (!userText.trim()) {
+        toast({
+          title: "No Speech Detected",
+          description: "Please try speaking again",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Add user message
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user',
+        content: userText,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => {
+        const newMessages = [...prev, userMessage];
+        
+        // Get AI response
+        setTimeout(async () => {
+          try {
+            const { data: aiData, error: aiError } = await supabase.functions.invoke('ai-medical-response', {
+              body: { 
+                userMessage: userText, 
+                language: language.code,
+                conversationHistory: newMessages.slice(1) // Exclude welcome message
+              }
+            });
+
+            if (aiError) throw aiError;
+
+            const assistantMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              type: 'assistant',
+              content: aiData.response,
+              timestamp: new Date()
+            };
+
+            setMessages(prev => [...prev, assistantMessage]);
+            updateClinicalNote(userText);
+            
+            // Play AI response
+            await playTextToSpeech(aiData.response);
+          } catch (error) {
+            console.error('Error getting AI response:', error);
+            toast({
+              title: "AI Error",
+              description: "Could not generate response",
+              variant: "destructive"
+            });
+          }
+        }, 500);
+
+        return newMessages;
+      });
+
+    } catch (error) {
+      console.error('Error processing voice message:', error);
+      toast({
+        title: "Processing Error",
+        description: "Could not process your voice message",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const updateClinicalNote = (userInput: string) => {
@@ -143,9 +234,62 @@ export default function MedicalChat({ language, onBack }: MedicalChatProps) {
     }));
   };
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // Here you would integrate actual speech-to-text functionality
+  const toggleRecording = async () => {
+    if (isRecording) {
+      // Stop recording
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        
+        audioChunksRef.current = [];
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        
+        mediaRecorderRef.current.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          handleVoiceMessage(audioBlob);
+          
+          // Clean up stream
+          stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+        
+        toast({
+          title: "Recording Started",
+          description: "Speak your health concerns..."
+        });
+        
+      } catch (error) {
+        console.error('Error accessing microphone:', error);
+        toast({
+          title: "Microphone Error",
+          description: "Could not access microphone",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const exportClinicalNote = () => {
@@ -267,40 +411,62 @@ This clinical note was generated by AI and requires doctor review for diagnosis 
                   </div>
                 </ScrollArea>
                 
-                {/* Input Area */}
-                <div className="border-t p-4">
-                  <div className="flex gap-2">
+                {/* Voice Interface */}
+                <div className="border-t p-6">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {language.code === 'hi' 
+                          ? 'अपनी स्वास्थ्य समस्याओं के बारे में बोलें'
+                          : language.code === 'bn'
+                          ? 'আপনার স্বাস্থ্যগত সমস্যার কথা বলুন'
+                          : 'Speak about your health concerns'
+                        }
+                      </p>
+                      {isProcessing && (
+                        <p className="text-xs text-primary">
+                          {language.code === 'hi' 
+                            ? 'प्रोसेसिंग...'
+                            : language.code === 'bn'
+                            ? 'প্রক্রিয়াকরণ...'
+                            : 'Processing...'
+                          }
+                        </p>
+                      )}
+                    </div>
+                    
                     <Button
-                      variant={isRecording ? "destructive" : "outline"}
-                      size="icon"
+                      variant={isRecording ? "destructive" : "default"}
+                      size="lg"
                       onClick={toggleRecording}
-                      className="transition-bounce"
+                      disabled={isProcessing || isPlayingAudio}
+                      className={`w-20 h-20 rounded-full transition-all duration-300 ${
+                        isRecording ? 'animate-pulse' : 'medical-gradient hover:scale-105'
+                      }`}
                     >
                       {isRecording ? (
-                        <MicOff className="h-4 w-4" />
+                        <MicOff className="h-8 w-8" />
+                      ) : isPlayingAudio ? (
+                        <Volume2 className="h-8 w-8" />
                       ) : (
-                        <Mic className="h-4 w-4" />
+                        <Mic className="h-8 w-8" />
                       )}
                     </Button>
-                    <Input
-                      placeholder={
-                        language.code === 'hi' 
-                          ? 'अपना संदेश लिखें...'
-                          : language.code === 'bn'
-                          ? 'আপনার বার্তা লিখুন...'
-                          : 'Type your message...'
+                    
+                    <p className="text-xs text-center text-muted-foreground max-w-xs">
+                      {isRecording 
+                        ? (language.code === 'hi' 
+                           ? 'रिकॉर्डिंग... बोलना बंद करने के लिए फिर से दबाएं'
+                           : language.code === 'bn'
+                           ? 'রেকর্ডিং... থামতে আবার চাপুন'
+                           : 'Recording... Press again to stop')
+                        : (language.code === 'hi' 
+                           ? 'माइक्रोफ़ोन दबाएं और बोलें'
+                           : language.code === 'bn'
+                           ? 'মাইক্রোফোন চাপুন এবং বলুন'
+                           : 'Press microphone and speak')
                       }
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      className="flex-1"
-                    />
-                    <Button 
-                      onClick={handleSendMessage}
-                      className="medical-gradient"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    </p>
                   </div>
                 </div>
               </CardContent>
