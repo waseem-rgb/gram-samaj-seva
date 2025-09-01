@@ -17,10 +17,18 @@ serve(async (req) => {
     
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
     if (!ELEVENLABS_API_KEY) {
-      throw new Error('ElevenLabs API key not configured')
+      console.error('ElevenLabs API key not found in environment')
+      return new Response(JSON.stringify({ 
+        error: 'ElevenLabs API key not configured. Please add your ElevenLabs API key in the Supabase dashboard.',
+        details: 'Go to Project Settings > Edge Functions > Environment variables and add ELEVENLABS_API_KEY'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     console.log('Getting signed URL for ElevenLabs Conversational AI, language:', language)
+    console.log('API key length:', ELEVENLABS_API_KEY.length, 'starts with:', ELEVENLABS_API_KEY.substring(0, 8) + '...')
 
     // Check for predefined agent ID in environment
     const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')
@@ -62,7 +70,18 @@ serve(async (req) => {
         }
       } else {
         const errorText = await agentResponse.text()
-        console.error('Failed to fetch agents:', errorText)
+        console.error('Failed to fetch agents. Status:', agentResponse.status, 'Response:', errorText)
+        
+        // If it's an auth error, return specific message
+        if (agentResponse.status === 401 || agentResponse.status === 403) {
+          return new Response(JSON.stringify({ 
+            error: 'Invalid ElevenLabs API key. Please check your API key in the Supabase dashboard.',
+            details: 'Make sure you have copied the correct API key from https://elevenlabs.io/app/settings/api-keys'
+          }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
       }
     } else {
       console.log('Using predefined agent ID:', agentId)

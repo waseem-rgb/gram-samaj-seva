@@ -241,9 +241,15 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       let errorTitle = "Connection Error";
       
       if (error instanceof Error) {
-        // Check if it's a functions error with details
+        // Check for specific error types
         if (error.message.includes('Edge Function returned a non-2xx')) {
-          errorMessage = "ElevenLabs service unavailable. Please ensure you have created at least one conversational agent in your ElevenLabs dashboard.";
+          errorMessage = "ElevenLabs service unavailable. Please check your API key and ensure you have created at least one conversational agent.";
+          errorTitle = "Setup Required";
+        } else if (error.message.includes('Invalid ElevenLabs API key')) {
+          errorMessage = "Please check your ElevenLabs API key. Make sure it's correctly configured in your Supabase dashboard.";
+          errorTitle = "Authentication Error";
+        } else if (error.message.includes('No conversational agents found')) {
+          errorMessage = "No conversational agents found in your ElevenLabs account. Please create at least one agent first.";
           errorTitle = "Setup Required";
         } else {
           errorMessage = error.message;
