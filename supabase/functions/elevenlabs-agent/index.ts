@@ -22,11 +22,7 @@ serve(async (req) => {
 
     console.log('Getting signed URL for ElevenLabs Conversational AI, language:', language)
 
-    // For ElevenLabs Conversational AI, we need to use a pre-created agent
-    // You would typically create agents in the ElevenLabs dashboard
-    // For demo purposes, we'll use a generic agent approach
-    
-    // First, let's try to get or create a conversational agent
+    // First, let's get all available agents
     const agentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
       method: 'GET',
       headers: {
@@ -38,20 +34,32 @@ serve(async (req) => {
     
     if (agentResponse.ok) {
       const agents = await agentResponse.json()
-      // Try to find an existing medical assistant agent
-      const existingAgent = agents.agents?.find((agent: any) => 
-        agent.name?.includes('Medical') || agent.name?.includes('Assistant')
-      )
+      console.log('Available agents:', agents.agents?.length || 0)
       
-      if (existingAgent) {
-        agentId = existingAgent.agent_id
-        console.log('Using existing agent:', agentId)
+      if (agents.agents && agents.agents.length > 0) {
+        // Try to find an existing medical assistant agent first
+        const existingAgent = agents.agents.find((agent: any) => 
+          agent.name?.toLowerCase().includes('medical') || 
+          agent.name?.toLowerCase().includes('assistant') ||
+          agent.name?.toLowerCase().includes('health')
+        )
+        
+        if (existingAgent) {
+          agentId = existingAgent.agent_id
+          console.log('Using existing medical agent:', agentId)
+        } else {
+          // Use the first available agent
+          agentId = agents.agents[0].agent_id
+          console.log('Using first available agent:', agentId)
+        }
       }
+    } else {
+      console.error('Failed to fetch agents:', await agentResponse.text())
     }
 
-    // If no agent found, try to use any available agent as fallback
+    // If we still don't have an agent, try to create one
     if (!agentId) {
-      console.log('No existing medical agent found, trying to create one...')
+      console.log('No agents found, attempting to create one...')
       
       const createAgentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
         method: 'POST',
@@ -60,42 +68,39 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: `Medical Assistant ${Date.now()}`,
+          name: 'Medical Assistant',
           prompt: {
-            prompt: `You are a helpful medical assistant. Respond in ${language} language when possible. Be empathetic and provide general health guidance, but always recommend consulting a doctor for proper diagnosis.`
+            prompt: `You are a helpful medical assistant. Always respond in ${language} language when possible. Be empathetic, provide general health guidance, but always recommend consulting a healthcare professional for proper diagnosis and treatment. Keep responses concise and helpful.`
           },
           voice: {
-            voice_id: "pNInz6obpgDQGcFmaJgB" // Adam voice
+            voice_id: "pNInz6obpgDQGcFmaJgB" // Default voice
           },
-          language: getLanguageCode(language)
+          language: getLanguageCode(language),
+          first_message: getFirstMessage(language)
         })
       })
 
       if (createAgentResponse.ok) {
         const newAgent = await createAgentResponse.json()
         agentId = newAgent.agent_id
-        console.log('Created new agent:', agentId)
+        console.log('Successfully created new agent:', agentId)
       } else {
         const createError = await createAgentResponse.text()
         console.error('Failed to create agent:', createError)
         
-        // Try to use any existing agent as fallback
-        if (agentResponse.ok) {
-          const agents = await agentResponse.json()
-          if (agents.agents && agents.agents.length > 0) {
-            agentId = agents.agents[0].agent_id
-            console.log('Using first available agent as fallback:', agentId)
-          }
-        }
-        
-        // If still no agent, return error
-        if (!agentId) {
-          throw new Error('No conversational agents available and cannot create new agent. Please create an agent in ElevenLabs dashboard first.')
-        }
+        // Return helpful error message to user
+        return new Response(JSON.stringify({ 
+          error: 'Unable to create or find ElevenLabs conversational agent. Please create an agent in your ElevenLabs dashboard first and try again.',
+          details: 'Visit https://elevenlabs.io/app/conversational-ai to create an agent.'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
     }
 
     // Generate signed URL for the conversation
+    console.log('Getting signed URL for agent:', agentId)
     const signedUrlResponse = await fetch(
       `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`,
       {
@@ -109,10 +114,11 @@ serve(async (req) => {
     if (!signedUrlResponse.ok) {
       const errorText = await signedUrlResponse.text()
       console.error('Failed to get signed URL:', errorText)
-      throw new Error(`Failed to get signed URL: ${signedUrlResponse.status}`)
+      throw new Error(`Failed to get signed URL: ${signedUrlResponse.status} - ${errorText}`)
     }
 
     const { signed_url } = await signedUrlResponse.json()
+    console.log('Successfully got signed URL')
     
     return new Response(JSON.stringify({ 
       signed_url,
@@ -122,8 +128,11 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Edge function error:', error)
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      suggestion: 'Please ensure you have created at least one conversational agent in your ElevenLabs dashboard.'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

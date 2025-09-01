@@ -235,9 +235,24 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       
     } catch (error) {
       console.error('Error starting conversation:', error);
+      
+      // Handle different types of errors
+      let errorMessage = "Could not start voice conversation. Please check microphone permissions.";
+      let errorTitle = "Connection Error";
+      
+      if (error instanceof Error) {
+        // Check if it's a functions error with details
+        if (error.message.includes('Edge Function returned a non-2xx')) {
+          errorMessage = "ElevenLabs service unavailable. Please ensure you have created at least one conversational agent in your ElevenLabs dashboard.";
+          errorTitle = "Setup Required";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: "Connection Error", 
-        description: error instanceof Error ? error.message : "Could not start voice conversation. Please check microphone permissions.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive"
       });
       setIsConnecting(false);
