@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, ArrowLeft, Download } from 'lucide-react';
+import { Mic, MicOff, ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Language {
@@ -348,6 +348,18 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     URL.revokeObjectURL(url);
   };
 
+  const clearHistory = () => {
+    setMessages([]);
+    setSymptoms([]);
+    setClinicalNotes('');
+    currentTranscriptRef.current = '';
+    
+    toast({
+      title: "History Cleared",
+      description: "All conversation history and clinical notes have been cleared",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary-light/10 to-secondary-light/20">
       <div className="container mx-auto px-4 py-4">
@@ -367,11 +379,24 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
               </p>
             </div>
           </div>
-          {messages.length > 0 && (
-            <span className="ml-auto bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-              🟢 Active Session
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {messages.length > 0 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearHistory}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Clear History
+                </Button>
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                  🟢 Active Session
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
