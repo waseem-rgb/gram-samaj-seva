@@ -41,17 +41,17 @@ export default function LanguageSelector({ onLanguageSelect, selectedLanguage }:
         <SelectTrigger className="w-full bg-white border-2 hover:border-primary/20 focus:border-primary z-50">
           <SelectValue placeholder="Select Language / भाषा चुनें" />
         </SelectTrigger>
-        <SelectContent className="bg-white border-2 shadow-lg z-50 max-h-60">
+        <SelectContent className="bg-card border-2 shadow-lg z-[100] max-h-60">
           {languages.map((language) => (
             <SelectItem 
               key={language.code} 
               value={language.code}
-              className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer"
+              className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer text-foreground"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{language.flag}</span>
                 <div className="flex flex-col">
-                  <span className="font-medium">{language.native}</span>
+                  <span className="font-medium text-foreground">{language.native}</span>
                   <span className="text-xs text-muted-foreground">{language.name}</span>
                 </div>
               </div>
