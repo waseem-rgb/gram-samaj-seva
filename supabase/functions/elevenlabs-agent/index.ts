@@ -13,22 +13,24 @@ serve(async (req) => {
   }
 
   try {
-    const { language } = await req.json()
+    const { language = 'en' } = await req.json()
     
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
+    console.log('🔍 Checking for ElevenLabs API key...')
+    
     if (!ELEVENLABS_API_KEY) {
-      console.error('ElevenLabs API key not found in environment')
+      console.error('❌ ElevenLabs API key not found in environment variables')
       return new Response(JSON.stringify({ 
-        error: 'ElevenLabs API key not configured. Please add your ElevenLabs API key in the Supabase dashboard.',
-        details: 'Go to Project Settings > Edge Functions > Environment variables and add ELEVENLABS_API_KEY'
+        error: 'ElevenLabs API key not configured. Please check your Supabase secrets configuration.',
+        details: 'The ELEVENLABS_API_KEY environment variable is missing. Please add it in your Supabase dashboard.'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    console.log('Getting signed URL for ElevenLabs Conversational AI, language:', language)
-    console.log('API key length:', ELEVENLABS_API_KEY.length, 'starts with:', ELEVENLABS_API_KEY.substring(0, 8) + '...')
+    console.log('✅ ElevenLabs API key found - length:', ELEVENLABS_API_KEY.length, 'starts with:', ELEVENLABS_API_KEY.substring(0, 8) + '...')
+    console.log('🚀 Getting signed URL for ElevenLabs Conversational AI, language:', language)
 
     // Check for predefined agent ID in environment
     const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')
