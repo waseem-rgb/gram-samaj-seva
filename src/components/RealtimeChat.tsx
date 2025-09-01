@@ -373,6 +373,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold">Medical Assistant</h1>
+              <p className="text-xs text-muted-foreground">चिकित्सा सहायक • মেডিকেল সহায়ক • వైద్య సహాయకుడు</p>
               <p className="text-sm text-muted-foreground flex items-center gap-2">
                 <span className="text-lg">{language.flag}</span>
                 {language.native}
@@ -391,6 +392,7 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
                   <Trash2 className="h-4 w-4 mr-1" />
                   Clear History
                 </Button>
+                <p className="text-xs text-muted-foreground">इतिहास साफ़ करें • ইতিহাস মুছুন</p>
                 <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                   🟢 Active Session
                 </span>
@@ -406,9 +408,11 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
           <Card className="card-shadow border-0">
             <CardHeader className="text-center">
               <CardTitle>Voice Conversation</CardTitle>
+              <p className="text-xs text-muted-foreground">वॉयस बातचीत • ভয়েস কথোপকথন • వాయిస్ సంభాషణ</p>
               <p className="text-sm text-muted-foreground">
                 Click to start speaking, AI will respond naturally
               </p>
+              <p className="text-xs text-muted-foreground">बोलना शुरू करने के लिए क्लिक करें • কথা বলা শুরু করতে ক্লিক করুন</p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Recording Button */}
@@ -434,6 +438,11 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
                 {isRecording 
                   ? 'Listening... AI will respond when you pause' 
                   : 'Click microphone to start conversation'}
+              </p>
+              <p className="text-center text-xs text-muted-foreground">
+                {isRecording 
+                  ? 'सुन रहा है... • শুনছি... • వింటున్నా...' 
+                  : 'माइक्रोफोन पर क्लिक करें • মাইক্রোফোনে ক্লিক করুন • మైక్రోఫోన్‌పై క్లిక్ చేయండి'}
               </p>
 
               {/* Messages */}
@@ -468,11 +477,13 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
           <Card className="card-shadow border-0">
             <CardHeader>
               <CardTitle>Patient Summary</CardTitle>
+              <p className="text-xs text-muted-foreground">रोगी सारांश • রোগীর সারসংক্ষেপ • రోగి సారాంశం</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {symptoms.length > 0 && (
                 <div>
                   <h3 className="font-medium mb-2">Reported Symptoms</h3>
+                  <p className="text-xs text-muted-foreground mb-2">रिपोर्ट किए गए लक्षण • রিপোর্ট করা লক্ষণ • నివేదించిన లక్షణాలు</p>
                   <div className="flex flex-wrap gap-2">
                     {symptoms.map((symptom, index) => (
                       <Badge key={index} variant="secondary" className="bg-red-100 text-red-800">
@@ -485,8 +496,12 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
 
               <div>
                 <h3 className="font-medium mb-2">Additional Info</h3>
+                <p className="text-xs text-muted-foreground mb-2">अतिरिक्त जानकारी • অতিরিক্ত তথ্য • అదనపు సమాచారం</p>
                 <p className="text-sm text-muted-foreground">
                   Patient reports symptoms in {language.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  रोगी {language.native} में लक्षण बताता है • রোগী {language.native} ভাষায় লক্ষণ বর্ণনা করেছেন
                 </p>
               </div>
 
@@ -499,6 +514,9 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
                     <Download className="h-4 w-4 mr-2" />
                     Export Clinical Note
                   </Button>
+                  <p className="text-xs text-center text-muted-foreground mt-1">
+                    क्लिनिकल नोट डाउनलोड करें • ক্লিনিক্যাল নোট ডাউনলোড করুন • క్లినికల్ నోట్ డౌన్‌లోడ్ చేయండి
+                  </p>
                 </div>
               )}
             </CardContent>
