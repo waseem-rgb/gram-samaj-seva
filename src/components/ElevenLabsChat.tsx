@@ -219,34 +219,6 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       }
       
       // Get signed URL from our edge function
-      console.log('Testing ElevenLabs API key first...');
-      const testResponse = await supabase.functions.invoke('test-elevenlabs');
-      
-      if (testResponse.error || testResponse.data?.test !== 'success') {
-        console.error('API key test failed:', testResponse.data);
-        
-        let errorMessage = "ElevenLabs API configuration issue detected.";
-        let errorTitle = "Setup Required";
-        
-        if (testResponse.data?.apiKeyValid === false) {
-          errorMessage = "Invalid ElevenLabs API key. Please get a new one from your dashboard.";
-        } else if (testResponse.data?.conversationalAiAccess === false) {
-          errorMessage = "Your ElevenLabs API key lacks Conversational AI permissions. Please upgrade your plan or get a new API key.";
-        } else {
-          errorMessage = testResponse.data?.error || testResponse.data?.solution || "Unknown API key issue.";
-        }
-        
-        toast({
-          title: errorTitle,
-          description: errorMessage,
-          variant: "destructive"
-        });
-        setIsConnecting(false);
-        return;
-      }
-      
-      console.log('✅ API key test passed:', testResponse.data);
-      
       const { data, error } = await supabase.functions.invoke('elevenlabs-agent', {
         body: { language: language.code }
       });
