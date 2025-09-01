@@ -32,12 +32,15 @@ serve(async (req) => {
       return
     }
 
-    openaiWs = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'OpenAI-Beta': 'realtime=v1'
-      }
-    })
+    // Create WebSocket connection to OpenAI Realtime API
+    const openaiUrl = `wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`
+    console.log("Connecting to OpenAI:", openaiUrl)
+    
+    openaiWs = new WebSocket(openaiUrl, [
+      "realtime",
+      `Bearer.${openaiApiKey}`,
+      "openai-beta.realtime=v1"
+    ])
 
     openaiWs.addEventListener("open", () => {
       console.log("Connected to OpenAI Realtime API")
