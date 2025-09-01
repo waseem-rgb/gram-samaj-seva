@@ -15,14 +15,18 @@ serve(async (req) => {
   try {
     const { language = 'en' } = await req.json()
     
+    console.log('🚀 ElevenLabs Agent Edge Function v2.0 - Starting request...')
+    
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
     console.log('🔍 Checking for ElevenLabs API key...')
     
     if (!ELEVENLABS_API_KEY) {
       console.error('❌ ElevenLabs API key not found in environment variables')
+      console.error('💡 Make sure ELEVENLABS_API_KEY is added in Supabase Edge Functions secrets')
       return new Response(JSON.stringify({ 
         error: 'ElevenLabs API key not configured. Please check your Supabase secrets configuration.',
-        details: 'The ELEVENLABS_API_KEY environment variable is missing. Please add it in your Supabase dashboard.'
+        details: 'The ELEVENLABS_API_KEY environment variable is missing. Please add it in your Supabase dashboard.',
+        troubleshooting: 'Go to Supabase Dashboard > Edge Functions > Secrets and verify ELEVENLABS_API_KEY is set'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
