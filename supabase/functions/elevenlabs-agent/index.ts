@@ -49,8 +49,10 @@ serve(async (req) => {
       }
     }
 
-    // If no agent found, we'll create a simple one
+    // If no agent found, try to use any available agent as fallback
     if (!agentId) {
+      console.log('No existing medical agent found, trying to create one...')
+      
       const createAgentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
         method: 'POST',
         headers: {
@@ -58,12 +60,12 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: `Medical Assistant`,
+          name: `Medical Assistant ${Date.now()}`,
           prompt: {
             prompt: `You are a helpful medical assistant. Respond in ${language} language when possible. Be empathetic and provide general health guidance, but always recommend consulting a doctor for proper diagnosis.`
           },
           voice: {
-            voice_id: "pNInz6obpgDQGcFmaJgB" // Adam voice - good for conversational AI
+            voice_id: "pNInz6obpgDQGcFmaJgB" // Adam voice
           },
           language: getLanguageCode(language)
         })
@@ -74,14 +76,22 @@ serve(async (req) => {
         agentId = newAgent.agent_id
         console.log('Created new agent:', agentId)
       } else {
-        // Fallback: use a default approach without agent
-        console.log('Could not create agent, using fallback')
-        return new Response(JSON.stringify({ 
-          signed_url: `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=default`,
-          agent_id: 'default'
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        const createError = await createAgentResponse.text()
+        console.error('Failed to create agent:', createError)
+        
+        // Try to use any existing agent as fallback
+        if (agentResponse.ok) {
+          const agents = await agentResponse.json()
+          if (agents.agents && agents.agents.length > 0) {
+            agentId = agents.agents[0].agent_id
+            console.log('Using first available agent as fallback:', agentId)
+          }
+        }
+        
+        // If still no agent, return error
+        if (!agentId) {
+          throw new Error('No conversational agents available and cannot create new agent. Please create an agent in ElevenLabs dashboard first.')
+        }
       }
     }
 
