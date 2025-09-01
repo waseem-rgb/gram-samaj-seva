@@ -15,11 +15,24 @@ serve(async (req) => {
   try {
     const { language = 'en' } = await req.json()
     
-    console.log('🚀 ElevenLabs Agent Edge Function v2.1 - Starting request...')
+    console.log('🚀 ElevenLabs Agent Edge Function v2.2 - Starting request...')
+    console.log('🔧 Debug: Full environment check')
+    
+    // Log all environment variables for debugging
+    const allEnvVars = Deno.env.toObject()
+    console.log('📊 Total env vars available:', Object.keys(allEnvVars).length)
+    console.log('🔑 All env var names:', Object.keys(allEnvVars))
+    console.log('🎯 ElevenLabs related vars:', Object.keys(allEnvVars).filter(key => key.toLowerCase().includes('eleven')))
     
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
-    console.log('🔍 Checking for ElevenLabs API key...')
-    console.log('📊 Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('ELEVEN')))
+    console.log('🔍 Checking for ELEVENLABS_API_KEY...')
+    console.log('📋 Direct lookup result:', ELEVENLABS_API_KEY ? 'FOUND' : 'NOT_FOUND')
+    
+    // Try alternative lookups
+    const altKey1 = Deno.env.get('ELEVEN_LABS_API_KEY')
+    const altKey2 = Deno.env.get('elevenlabs_api_key')
+    console.log('🔄 Alternative key checks - ELEVEN_LABS_API_KEY:', altKey1 ? 'FOUND' : 'NOT_FOUND')
+    console.log('🔄 Alternative key checks - elevenlabs_api_key:', altKey2 ? 'FOUND' : 'NOT_FOUND')
     
     if (!ELEVENLABS_API_KEY) {
       console.error('❌ ElevenLabs API key not found in environment variables')
