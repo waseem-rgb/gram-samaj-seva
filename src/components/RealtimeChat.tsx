@@ -346,8 +346,8 @@ const RealtimeChat: React.FC<RealtimeChatProps> = ({ language, onBack }) => {
     audioContextRef.current = new AudioContext({ sampleRate: 24000 });
     audioQueueRef.current = new AudioQueue(audioContextRef.current);
     
-    // Connect to WebSocket
-    const wsUrl = `wss://vjelsuxiuyzszirfrpnl.supabase.co/functions/v1/realtime-chat`;
+    // Connect to WebSocket - Use dynamic URL from window location
+    const wsUrl = `wss://${window.location.hostname.replace('lovable.dev', 'supabase.co')}/functions/v1/realtime-chat`;
     console.log('Attempting to connect to WebSocket:', wsUrl);
     wsRef.current = new WebSocket(wsUrl);
     
