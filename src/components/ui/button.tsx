@@ -19,6 +19,8 @@ const buttonVariants = cva(
         healing: "healing-gradient text-white hover:scale-105 transform transition-bounce floating-shadow",
         warm: "warm-gradient text-white hover:scale-105 transform transition-bounce floating-shadow",
         hero: "hero-gradient text-white hover:scale-105 transform transition-bounce floating-shadow",
+        "hero-outline": "bg-white/10 text-white border border-white/20 hover:bg-white/20 backdrop-blur-sm transition-medical",
+        "hero-solid": "bg-white text-foreground hover:bg-white/90 transition-medical font-medium",
       },
       size: {
         default: "h-12 px-6 py-3",

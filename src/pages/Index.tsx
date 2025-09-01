@@ -94,16 +94,16 @@ const Index = () => {
                     </div>
                     <div className="flex gap-3">
                       <Button
-                        variant={voiceMode === 'realtime' ? 'default' : 'outline'}
+                        variant={voiceMode === 'realtime' ? 'hero-solid' : 'hero-outline'}
                         onClick={() => setVoiceMode('realtime')}
                         className="flex items-center gap-2"
                       >
                         <Phone className="h-4 w-4" />
                         Realtime Chat
-                        <Badge variant="secondary" className="text-xs">New</Badge>
+                        <Badge variant="secondary" className="text-xs ml-1">New</Badge>
                       </Button>
                       <Button
-                        variant={voiceMode === 'push-to-talk' ? 'default' : 'outline'}
+                        variant={voiceMode === 'push-to-talk' ? 'hero-solid' : 'hero-outline'}
                         onClick={() => setVoiceMode('push-to-talk')}
                         className="flex items-center gap-2"
                       >
