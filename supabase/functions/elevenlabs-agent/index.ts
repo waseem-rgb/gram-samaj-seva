@@ -78,11 +78,14 @@ serve(async (req) => {
         const errorText = await agentResponse.text()
         console.error('Failed to fetch agents. Status:', agentResponse.status, 'Response:', errorText)
         
-        // If it's an auth error, return specific message
+        // If it's an auth error or permission error, suggest using predefined agent ID
         if (agentResponse.status === 401 || agentResponse.status === 403) {
+          console.error('❌ API key missing convai_read permission or invalid')
+          console.error('💡 Solution: Set ELEVENLABS_AGENT_ID in Supabase secrets to bypass agent fetching')
           return new Response(JSON.stringify({ 
-            error: 'Invalid ElevenLabs API key. Please check your API key in the Supabase dashboard.',
-            details: 'Make sure you have copied the correct API key from https://elevenlabs.io/app/settings/api-keys'
+            error: 'ElevenLabs API key missing permissions or invalid. Please add ELEVENLABS_AGENT_ID to your Supabase secrets.',
+            details: 'Either upgrade your ElevenLabs API key permissions or set ELEVENLABS_AGENT_ID in Supabase Edge Functions secrets with your agent ID from https://elevenlabs.io/app/conversational-ai',
+            troubleshooting: 'Go to https://elevenlabs.io/app/conversational-ai, copy your Agent ID, then add it as ELEVENLABS_AGENT_ID secret in Supabase'
           }), {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

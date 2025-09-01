@@ -229,9 +229,7 @@ const ElevenLabsChat: React.FC<ElevenLabsChatProps> = ({ language, onBack }) => 
       console.log('Starting conversation with URL:', data.signed_url);
       
       // Start conversation with signed URL
-      const conversationId = await conversation.startSession({
-        signedUrl: data.signed_url
-      });
+      const conversationId = await conversation.startSession(data.signed_url);
       
     } catch (error) {
       console.error('Error starting conversation:', error);
