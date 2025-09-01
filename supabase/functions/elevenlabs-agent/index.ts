@@ -15,42 +15,69 @@ serve(async (req) => {
   try {
     const { language = 'en' } = await req.json()
     
-    console.log('🚀 ElevenLabs Agent Edge Function v2.2 - Starting request...')
-    console.log('🔧 Debug: Full environment check')
+    console.log('🚀 ElevenLabs Agent Edge Function v3.0 - FORCE REDEPLOY')
+    console.log('🔧 COMPREHENSIVE DEBUG MODE ENABLED')
     
-    // Log all environment variables for debugging
+    // Get all environment variables
     const allEnvVars = Deno.env.toObject()
-    console.log('📊 Total env vars available:', Object.keys(allEnvVars).length)
-    console.log('🔑 All env var names:', Object.keys(allEnvVars))
-    console.log('🎯 ElevenLabs related vars:', Object.keys(allEnvVars).filter(key => key.toLowerCase().includes('eleven')))
+    const envKeys = Object.keys(allEnvVars)
     
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
-    console.log('🔍 Checking for ELEVENLABS_API_KEY...')
-    console.log('📋 Direct lookup result:', ELEVENLABS_API_KEY ? 'FOUND' : 'NOT_FOUND')
+    console.log('📊 TOTAL ENV VARS:', envKeys.length)
+    console.log('🗝️  ALL ENV VAR KEYS:', JSON.stringify(envKeys))
     
-    // Try alternative lookups
-    const altKey1 = Deno.env.get('ELEVEN_LABS_API_KEY')
-    const altKey2 = Deno.env.get('elevenlabs_api_key')
-    console.log('🔄 Alternative key checks - ELEVEN_LABS_API_KEY:', altKey1 ? 'FOUND' : 'NOT_FOUND')
-    console.log('🔄 Alternative key checks - elevenlabs_api_key:', altKey2 ? 'FOUND' : 'NOT_FOUND')
+    // Look for ElevenLabs related keys
+    const elevenLabsKeys = envKeys.filter(key => 
+      key.toLowerCase().includes('eleven') || 
+      key.toLowerCase().includes('xi') ||
+      key.toLowerCase().includes('api')
+    )
+    console.log('🎯 ELEVENLABS/API RELATED KEYS:', JSON.stringify(elevenLabsKeys))
     
-    if (!ELEVENLABS_API_KEY) {
-      console.error('❌ ElevenLabs API key not found in environment variables')
-      console.error('💡 Make sure ELEVENLABS_API_KEY is added in Supabase Edge Functions secrets')
+    // Try different variations
+    const possibleKeys = [
+      'ELEVENLABS_API_KEY',
+      'ELEVEN_LABS_API_KEY', 
+      'elevenlabs_api_key',
+      'XI_API_KEY',
+      'OPENAI_API_KEY' // Just to see if any API keys work
+    ]
+    
+    console.log('🔍 TESTING POSSIBLE KEY VARIATIONS:')
+    let foundKey = null
+    let foundValue = null
+    
+    for (const key of possibleKeys) {
+      const value = Deno.env.get(key)
+      console.log(`   ${key}: ${value ? 'FOUND (length: ' + value.length + ')' : 'NOT_FOUND'}`)
+      if (value && !foundKey) {
+        foundKey = key
+        foundValue = value
+      }
+    }
+    
+    if (!foundValue) {
+      console.error('❌ NO VALID API KEY FOUND IN ANY VARIATION')
+      console.error('💡 AVAILABLE SECRETS:', JSON.stringify(envKeys.filter(k => k.includes('API') || k.includes('KEY'))))
+      
       return new Response(JSON.stringify({ 
-        error: 'ElevenLabs API key not configured. Please check your Supabase secrets configuration.',
-        details: 'The ELEVENLABS_API_KEY environment variable is missing. Please add it in your Supabase dashboard.',
-        troubleshooting: 'Go to Supabase Dashboard > Edge Functions > Secrets and verify ELEVENLABS_API_KEY is set'
+        error: 'ElevenLabs API key not found in environment variables',
+        debug: {
+          totalEnvVars: envKeys.length,
+          apiRelatedKeys: envKeys.filter(k => k.includes('API') || k.includes('KEY')),
+          elevenLabsKeys: elevenLabsKeys,
+          searchedKeys: possibleKeys
+        },
+        solution: 'Please verify ELEVENLABS_API_KEY is set in Supabase Edge Functions secrets'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    console.log('✅ ElevenLabs API key found - length:', ELEVENLABS_API_KEY.length, 'starts with:', ELEVENLABS_API_KEY.substring(0, 8) + '...')
-    console.log('🚀 Getting signed URL for ElevenLabs Conversational AI, language:', language)
+    console.log('✅ FOUND API KEY:', foundKey, 'length:', foundValue.length)
+    console.log('🚀 Proceeding with ElevenLabs API call...')
 
-    // Check for predefined agent ID in environment
+    // Check for agent ID
     const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')
     let agentId = ELEVENLABS_AGENT_ID
 
@@ -61,7 +88,7 @@ serve(async (req) => {
       const agentResponse = await fetch('https://api.elevenlabs.io/v1/convai/agents', {
         method: 'GET',
         headers: {
-          'xi-api-key': ELEVENLABS_API_KEY,
+          'xi-api-key': foundValue,
         },
       })
 
@@ -129,7 +156,7 @@ serve(async (req) => {
       {
         method: 'GET',
         headers: {
-          'xi-api-key': ELEVENLABS_API_KEY,
+          'xi-api-key': foundValue,
         },
       }
     )
@@ -161,37 +188,3 @@ serve(async (req) => {
     })
   }
 })
-
-function getFirstMessage(language: string): string {
-  const messages: Record<string, string> = {
-    'hi': 'नमस्ते! मैं आपका चिकित्सा सहायक हूं। कृपया अपनी स्वास्थ्य संबंधी चिंताओं के बारे में बताएं।',
-    'bn': 'নমস্কার! আমি আপনার চিকিৎসা সহায়ক। অনুগ্রহ করে আপনার স্বাস্থ্য সংক্রান্ত উদ্বেগের কথা বলুন।',
-    'te': 'నమస్కారం! నేను మీ వైద్య సహాయకుడిని। దయచేసి మీ ఆరోగ్య సమస్యల గురించి చెప్పండి।',
-    'ta': 'வணக்கம்! நான் உங்கள் மருத்துவ உதவியாளர். உங்கள் உடல்நலக் கவலைகளைப் பற்றி கூறுங்கள்.',
-    'mr': 'नमस्कार! मी तुमचा वैद्यकीय सहाय्यक आहे. कृपया तुमच्या आरोग्यसंबंधी चिंता सांगा.',
-    'gu': 'નમસ્તે! હું તમારો તબીબી સહાયક છું. કૃપા કરીને તમારી સ્વાસ્થ્ય સંબંધિત ચિંતાઓ વિશે કહો.',
-    'kn': 'ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ವೈದ್ಯಕೀಯ ಸಹಾಯಕ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಆರೋಗ್ಯ ಸಮಸ್ಯೆಗಳ ಬಗ್ಗೆ ಹೇಳಿ.',
-    'ml': 'നമസ്കാരം! ഞാൻ നിങ്ങളുടെ മെഡിക്കൽ അസിസ്റ്റന്റാണ്. നിങ്ങളുടെ ആരോഗ്യ പ്രശ്നങ്ങളെക്കുറിച്ച് പറയുക.',
-    'pa': 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡਾ ਮੈਡੀਕਲ ਅਸਿਸਟੈਂਟ ਹਾਂ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀਆਂ ਸਿਹਤ ਸਮੱਸਿਆਵਾਂ ਬਾਰੇ ਦੱਸੋ।',
-    'en': 'Hello! I am your medical assistant. Please tell me about your health concerns.'
-  }
-  
-  return messages[language] || messages['en']
-}
-
-function getLanguageCode(language: string): string {
-  const codes: Record<string, string> = {
-    'hi': 'hi',
-    'bn': 'bn', 
-    'te': 'te',
-    'ta': 'ta',
-    'mr': 'mr',
-    'gu': 'gu',
-    'kn': 'kn',
-    'ml': 'ml',
-    'pa': 'pa',
-    'en': 'en'
-  }
-  
-  return codes[language] || 'en'
-}
