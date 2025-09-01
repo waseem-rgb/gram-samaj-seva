@@ -15,10 +15,11 @@ serve(async (req) => {
   try {
     const { language = 'en' } = await req.json()
     
-    console.log('🚀 ElevenLabs Agent Edge Function v2.0 - Starting request...')
+    console.log('🚀 ElevenLabs Agent Edge Function v2.1 - Starting request...')
     
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY')
     console.log('🔍 Checking for ElevenLabs API key...')
+    console.log('📊 Available env vars:', Object.keys(Deno.env.toObject()).filter(key => key.includes('ELEVEN')))
     
     if (!ELEVENLABS_API_KEY) {
       console.error('❌ ElevenLabs API key not found in environment variables')
