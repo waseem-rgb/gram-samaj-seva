@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import LanguageSelector from '@/components/LanguageSelector';
-import MedicalChat from '@/components/MedicalChat';
+import RealtimeChat from '@/components/RealtimeChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, Stethoscope, Users, Globe } from 'lucide-react';
@@ -33,7 +33,7 @@ const Index = () => {
   };
 
   if (showChat && selectedLanguage) {
-    return <MedicalChat language={selectedLanguage} onBack={handleBackToHome} />;
+    return <RealtimeChat language={selectedLanguage} onBack={handleBackToHome} />;
   }
 
   return (
