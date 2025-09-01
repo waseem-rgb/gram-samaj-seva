@@ -44,16 +44,16 @@ const Index = () => {
           className="h-[60vh] bg-cover bg-center bg-no-repeat relative"
           style={{ backgroundImage: `url(${heroImage})` }}
         >
-          <div className="absolute inset-0 bg-black/50"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60"></div>
+          <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="text-center text-white px-4">
               <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="p-3 medical-gradient rounded-full">
+                <div className="p-3 medical-gradient rounded-full flex-shrink-0">
                   <Heart className="h-8 w-8 text-white" />
                 </div>
                 <h1 className="text-4xl md:text-6xl font-bold flex items-center gap-4">
                   <span>Med</span>
-                  <Stethoscope className="h-12 w-12 md:h-16 md:w-16" />
+                  <Stethoscope className="h-12 w-12 md:h-16 md:w-16 text-white" />
                   <span>Assist</span>
                 </h1>
               </div>
