@@ -1,80 +1,64 @@
-import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Languages, Globe } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const languages = [
-  { code: 'hi', name: 'हिंदी', native: 'Hindi', flag: '🇮🇳' },
-  { code: 'bn', name: 'বাংলা', native: 'Bengali', flag: '🇧🇩' },
-  { code: 'te', name: 'తెలుగు', native: 'Telugu', flag: '🇮🇳' },
-  { code: 'mr', name: 'मराठी', native: 'Marathi', flag: '🇮🇳' },
-  { code: 'ta', name: 'தமிழ்', native: 'Tamil', flag: '🇮🇳' },
-  { code: 'gu', name: 'ગુજરાતી', native: 'Gujarati', flag: '🇮🇳' },
-  { code: 'kn', name: 'ಕನ್ನಡ', native: 'Kannada', flag: '🇮🇳' },
-  { code: 'ml', name: 'മലയാളം', native: 'Malayalam', flag: '🇮🇳' },
-  { code: 'pa', name: 'ਪੰਜਾਬੀ', native: 'Punjabi', flag: '🇮🇳' },
-  { code: 'en', name: 'English', native: 'English', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-];
-
-interface LanguageSelectorProps {
-  onLanguageSelect: (language: typeof languages[0]) => void;
+interface Language {
+  code: string;
+  name: string;
+  native: string;
+  flag: string;
 }
 
-export default function LanguageSelector({ onLanguageSelect }: LanguageSelectorProps) {
-  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+interface LanguageSelectorProps {
+  onLanguageSelect: (language: Language) => void;
+  selectedLanguage?: Language;
+}
 
-  const handleLanguageSelect = (language: typeof languages[0]) => {
-    setSelectedLang(language.code);
-    onLanguageSelect(language);
+export default function LanguageSelector({ onLanguageSelect, selectedLanguage }: LanguageSelectorProps) {
+  const languages: Language[] = [
+    { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
+    { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
+    { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+    { code: 'mr', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+    { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+    { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
+    { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
+    { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳' },
+    { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+    { code: 'en', name: 'English', native: 'English', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  ];
+
+  const handleLanguageChange = (languageCode: string) => {
+    const language = languages.find(lang => lang.code === languageCode);
+    if (language) {
+      onLanguageSelect(language);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary-light/20 to-secondary-light/30 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl card-shadow border-0">
-        <CardHeader className="text-center pb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 medical-gradient rounded-full">
-              <Languages className="h-8 w-8 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            आपकी भाषा चुनें / Choose Your Language
-          </CardTitle>
-          <p className="text-muted-foreground mt-2 text-lg">
-            कृपया अपनी पसंदीदा भाषा का चयन करें / Please select your preferred language
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {languages.map((language) => (
-              <Button
-                key={language.code}
-                variant={selectedLang === language.code ? "medical" : "outline"}
-                className="h-20 flex flex-col items-center justify-center space-y-2 transition-bounce hover:scale-105"
-                onClick={() => handleLanguageSelect(language)}
-              >
-                <span className="text-2xl">{language.flag}</span>
-                <div className="text-center">
-                  <div className="font-semibold text-sm">{language.name}</div>
-                  <div className="text-xs opacity-70">{language.native}</div>
+    <div className="w-full max-w-xs">
+      <Select onValueChange={handleLanguageChange} value={selectedLanguage?.code}>
+        <SelectTrigger className="w-full bg-white border-2 hover:border-primary/20 focus:border-primary z-50">
+          <SelectValue placeholder="Select Language / भाषा चुनें" />
+        </SelectTrigger>
+        <SelectContent className="bg-white border-2 shadow-lg z-50 max-h-60">
+          {languages.map((language) => (
+            <SelectItem 
+              key={language.code} 
+              value={language.code}
+              className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{language.flag}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium">{language.native}</span>
+                  <span className="text-xs text-muted-foreground">{language.name}</span>
                 </div>
-              </Button>
-            ))}
-          </div>
-          
-          <div className="mt-8 text-center">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
-              <Globe className="h-5 w-5" />
-              <span>Multilingual Medical Assistant</span>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-              Our AI medical assistant supports major Indian languages to help you communicate 
-              with healthcare providers effectively. Your conversation will be translated and 
-              documented for medical review.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
