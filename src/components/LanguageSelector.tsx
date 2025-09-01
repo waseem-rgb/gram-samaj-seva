@@ -38,10 +38,10 @@ export default function LanguageSelector({ onLanguageSelect, selectedLanguage }:
   return (
     <div className="w-full">
       <Select onValueChange={handleLanguageChange} value={selectedLanguage?.code}>
-        <SelectTrigger className="w-full bg-white/95 border-2 hover:border-primary/20 focus:border-primary z-50 h-10">
+        <SelectTrigger className="w-full bg-white text-foreground border-2 border-white/20 hover:border-white/40 focus:border-white z-50 h-10 backdrop-blur-sm">
           <SelectValue placeholder="Select Language" />
         </SelectTrigger>
-        <SelectContent className="bg-card border-2 shadow-lg z-[100] max-h-60">
+        <SelectContent className="bg-card border-2 shadow-lg z-[100] max-h-60 backdrop-blur-sm">
           {languages.map((language) => (
             <SelectItem 
               key={language.code} 
