@@ -1,4 +1,4 @@
 project_id = "vjelsuxiuyzszirfrpnl"
 
-[functions.realtime-chat]
+[functions.openai-ephemeral-session]
 verify_jwt = false
